@@ -77,7 +77,7 @@ An enhanced bash script for automated AIDE (Advanced Intrusion Detection Environ
 | `-u, --smtp-user USER` | SMTP username |
 | `-P, --smtp-pass PASS` | SMTP password |
 | `-t, --sleep-time SECONDS` | Sleep time before starting (default: random 10-300) |
-| `-a, --attach-db` | Send current database as email attachment |
+| `-a, --attach-db` | Send current AIDE database (aide.db.gz) as email attachment |
 | `-c, --install-cron` | Install as daily cron job at 12:00 AM |
 | `-q, --quiet` | Suppress non-error output |
 | `-h, --help` | Show help message |

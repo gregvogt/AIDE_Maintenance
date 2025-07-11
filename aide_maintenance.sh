@@ -40,33 +40,6 @@ OLD_DB="/var/lib/aide/aide.db.gz"
 NEW_DB="/var/lib/aide/aide.db.new.gz"
 DECOMPRESS="gzip -d -c"
 
-# Function to center text
-center() {
-    local width
-    width=$(tput cols 2>/dev/null || echo 80)
-    awk -v w="$width" '{ l=length($0); if (l<w) { printf "%*s%s\n", int((w-l)/2), "", $0 } else { print } }'
-}
-
-# Display banner
-if [[ "$QUIET" != "true" ]]; then
-    cat <<"EOF" | tee -a "$LOG_FILE"
- $$$$$$\  $$$$$$\ $$$$$$$\  $$$$$$$$\       $$$$$$$\                                           $$\
-$$  __$$\ \_$$  _|$$  __$$\ $$  _____|      $$  __$$\                                          $$ |
-$$ /  $$ |  $$ |  $$ |  $$ |$$ |            $$ |  $$ | $$$$$$\   $$$$$$\   $$$$$$\   $$$$$$\ $$$$$$\
-$$$$$$$$ |  $$ |  $$ |  $$ |$$$$$\          $$$$$$$  |$$  __$$\ $$  __$$\ $$  __$$\ $$  __$$\\_$$  _|
-$$  __$$ |  $$ |  $$ |  $$ |$$  __|         $$  __$$< $$$$$$$$ |$$ /  $$ |$$ /  $$ |$$ |  \__| $$ |
-$$ |  $$ |  $$ |  $$ |  $$ |$$ |            $$ |  $$ |$$   ____|$$ |  $$ |$$ |  $$ |$$ |       $$ |$$\
-$$ |  $$ |$$$$$$\ $$$$$$$  |$$$$$$$$\       $$ |  $$ |\$$$$$$$\ $$$$$$$  |\$$$$$$  |$$ |       \$$$$  |
-\__|  \__|\______|\_______/ \________|      \__|  \__| \_______|$$  ____/  \______/ \__|        \____/
-                                                                $$ |
-                                                                $$ |
-                                                                \__|
-EOF
-    echo "" | tee -a "$LOG_FILE"
-    echo "$(date)" | center | tee -a "$LOG_FILE"
-    echo "" | tee -a "$LOG_FILE"
-fi
-
 # Function to sanitize input
 sanitize_input() {
     local input="$1"
@@ -286,6 +259,34 @@ create_directories "$LOG_DIR"
 # Set up log file
 LOG_FILE="$LOG_DIR/aide-check-$TIMESTAMP.log"
 
+
+# Function to center text
+center() {
+    local width
+    width=$(tput cols 2>/dev/null || echo 80)
+    awk -v w="$width" '{ l=length($0); if (l<w) { printf "%*s%s\n", int((w-l)/2), "", $0 } else { print } }'
+}
+
+# Display banner
+if [[ "$QUIET" != "true" ]]; then
+    cat <<"EOF" | tee -a "$LOG_FILE"
+ $$$$$$\  $$$$$$\ $$$$$$$\  $$$$$$$$\       $$$$$$$\                                           $$\
+$$  __$$\ \_$$  _|$$  __$$\ $$  _____|      $$  __$$\                                          $$ |
+$$ /  $$ |  $$ |  $$ |  $$ |$$ |            $$ |  $$ | $$$$$$\   $$$$$$\   $$$$$$\   $$$$$$\ $$$$$$\
+$$$$$$$$ |  $$ |  $$ |  $$ |$$$$$\          $$$$$$$  |$$  __$$\ $$  __$$\ $$  __$$\ $$  __$$\\_$$  _|
+$$  __$$ |  $$ |  $$ |  $$ |$$  __|         $$  __$$< $$$$$$$$ |$$ /  $$ |$$ /  $$ |$$ |  \__| $$ |
+$$ |  $$ |  $$ |  $$ |  $$ |$$ |            $$ |  $$ |$$   ____|$$ |  $$ |$$ |  $$ |$$ |       $$ |$$\
+$$ |  $$ |$$$$$$\ $$$$$$$  |$$$$$$$$\       $$ |  $$ |\$$$$$$$\ $$$$$$$  |\$$$$$$  |$$ |       \$$$$  |
+\__|  \__|\______|\_______/ \________|      \__|  \__| \_______|$$  ____/  \______/ \__|        \____/
+                                                                $$ |
+                                                                $$ |
+                                                                \__|
+EOF
+    echo "" | tee -a "$LOG_FILE"
+    echo "$(date)" | center | tee -a "$LOG_FILE"
+    echo "" | tee -a "$LOG_FILE"
+fi
+
 # Set sleep time (random if not specified)
 if [[ -z "$SLEEP_TIME" ]]; then
     SLEEP_TIME=$((RANDOM % 291 + 10))
@@ -321,7 +322,12 @@ determine_compression() {
 send_email() {
     local subject="$1"
     local body="$2"
-    local attachment_path="$3"
+    
+    # Always use current AIDE database as attachment when attachments are requested
+    local attachment_path=""
+    if [[ "$SEND_DB_ATTACHMENT" == "true" ]]; then
+        attachment_path="$OLD_DB"
+    fi
     
     [[ "$QUIET" != "true" ]] && echo "Sending email: $subject"
     
@@ -522,12 +528,8 @@ Backup DB: $BACKUP_DB
     email_body="${email_body}Log Content:
 $log_content"
     
-    # Send email with or without attachment
-    if [[ "$SEND_DB_ATTACHMENT" == "true" ]]; then
-        send_email "AIDE check completed" "$email_body" "$OLD_DB"
-    else
-        send_email "AIDE check completed" "$email_body"
-    fi
+    # Send email (attachment will be included automatically if SEND_DB_ATTACHMENT is true)
+    send_email "AIDE check completed" "$email_body"
 fi
 
 [[ "$QUIET" != "true" ]] && echo "AIDE check and update completed successfully."
