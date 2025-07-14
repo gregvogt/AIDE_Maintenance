@@ -19,8 +19,8 @@
 # @link    https://gregvogt.net/projects
 
 # Security hardening
-set -euo pipefail  # Exit on error, undefined vars, pipe failures
-IFS=$'\n\t'        # Secure Internal Field Separator
+set -euo pipefail # Exit on error, undefined vars, pipe failures
+IFS=$'\n\t'       # Secure Internal Field Separator
 
 # Initialize variables with defaults
 LOG_DIR=""
@@ -44,7 +44,7 @@ DECOMPRESS="gzip -d -c"
 sanitize_input() {
     local input="$1"
     # Remove potentially dangerous characters
-    echo "$input" | sed 's/[;&|`$(){}[\]<>]//g' | tr -d '\000-\037\177-\377'
+    echo "$input" | sed "s/[;&|\`\$(){}[\]<>]//g" | tr -d '\000-\037\177-\377'
 }
 
 # Function to validate email
@@ -85,7 +85,7 @@ validate_port() {
 
 # Function to show usage
 show_usage() {
-    cat << EOF
+    cat <<EOF
 Usage: $0 [OPTIONS]
 
 OPTIONS:
@@ -113,55 +113,55 @@ EOF
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -l|--log-dir)
-                LOG_DIR="$(sanitize_input "$2")"
-                shift 2
-                ;;
-            -e|--email)
-                EMAIL="$(sanitize_input "$2")"
-                shift 2
-                ;;
-            -s|--smtp-server)
-                SMTP_SERVER="$(sanitize_input "$2")"
-                shift 2
-                ;;
-            -p|--smtp-port)
-                SMTP_PORT="$(sanitize_input "$2")"
-                shift 2
-                ;;
-            -u|--smtp-user)
-                SMTP_USER="$(sanitize_input "$2")"
-                shift 2
-                ;;
-            -P|--smtp-pass)
-                SMTP_PASS="$2"  # Don't sanitize password
-                shift 2
-                ;;
-            -t|--sleep-time)
-                SLEEP_TIME="$(sanitize_input "$2")"
-                shift 2
-                ;;
-            -a|--attach-db)
-                SEND_DB_ATTACHMENT="true"
-                shift
-                ;;
-            -c|--install-cron)
-                INSTALL_CRON="true"
-                shift
-                ;;
-            -q|--quiet)
-                QUIET="true"
-                shift
-                ;;
-            -h|--help)
-                show_usage
-                exit 0
-                ;;
-            *)
-                echo "Unknown option: $1" >&2
-                show_usage
-                exit 1
-                ;;
+        -l | --log-dir)
+            LOG_DIR="$(sanitize_input "$2")"
+            shift 2
+            ;;
+        -e | --email)
+            EMAIL="$(sanitize_input "$2")"
+            shift 2
+            ;;
+        -s | --smtp-server)
+            SMTP_SERVER="$(sanitize_input "$2")"
+            shift 2
+            ;;
+        -p | --smtp-port)
+            SMTP_PORT="$(sanitize_input "$2")"
+            shift 2
+            ;;
+        -u | --smtp-user)
+            SMTP_USER="$(sanitize_input "$2")"
+            shift 2
+            ;;
+        -P | --smtp-pass)
+            SMTP_PASS="$2" # Don't sanitize password
+            shift 2
+            ;;
+        -t | --sleep-time)
+            SLEEP_TIME="$(sanitize_input "$2")"
+            shift 2
+            ;;
+        -a | --attach-db)
+            SEND_DB_ATTACHMENT="true"
+            shift
+            ;;
+        -c | --install-cron)
+            INSTALL_CRON="true"
+            shift
+            ;;
+        -q | --quiet)
+            QUIET="true"
+            shift
+            ;;
+        -h | --help)
+            show_usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            show_usage
+            exit 1
+            ;;
         esac
     done
 }
@@ -173,24 +173,24 @@ validate_args() {
         show_usage
         exit 1
     fi
-    
+
     if ! validate_directory "$LOG_DIR"; then
         exit 1
     fi
-    
+
     if [[ -n "$EMAIL" ]] && ! validate_email "$EMAIL"; then
         exit 1
     fi
-    
+
     if [[ -n "$SMTP_PORT" ]] && ! validate_port "$SMTP_PORT"; then
         exit 1
     fi
-    
+
     if [[ -n "$SLEEP_TIME" ]] && ! [[ "$SLEEP_TIME" =~ ^[0-9]+$ ]]; then
         echo "Error: Sleep time must be a positive integer" >&2
         exit 1
     fi
-    
+
     # If sending email attachments, email must be provided
     if [[ "$SEND_DB_ATTACHMENT" == "true" && -z "$EMAIL" ]]; then
         echo "Error: Email address required when sending database attachments" >&2
@@ -215,7 +215,7 @@ install_cron_job() {
     local script_path
     script_path="$(realpath "$0")"
     local cron_cmd="$script_path"
-    
+
     # Add all arguments except --install-cron
     [[ -n "$LOG_DIR" ]] && cron_cmd="$cron_cmd -l '$LOG_DIR'"
     [[ -n "$EMAIL" ]] && cron_cmd="$cron_cmd -e '$EMAIL'"
@@ -226,17 +226,20 @@ install_cron_job() {
     [[ -n "$SLEEP_TIME" ]] && cron_cmd="$cron_cmd -t '$SLEEP_TIME'"
     [[ "$SEND_DB_ATTACHMENT" == "true" ]] && cron_cmd="$cron_cmd -a"
     [[ "$QUIET" == "true" ]] && cron_cmd="$cron_cmd -q"
-    
+
     local cron_entry="0 0 * * * $cron_cmd"
-    
+
     # Check if cron job already exists
     if crontab -l 2>/dev/null | grep -q "aide_maintenance.sh"; then
         echo "Cron job already exists. Removing old entry..."
         crontab -l 2>/dev/null | grep -v "aide_maintenance.sh" | crontab -
     fi
-    
+
     # Add new cron job
-    (crontab -l 2>/dev/null; echo "$cron_entry") | crontab -
+    (
+        crontab -l 2>/dev/null
+        echo "$cron_entry"
+    ) | crontab -
     echo "Cron job installed successfully:"
     echo "$cron_entry"
     exit 0
@@ -258,7 +261,6 @@ create_directories "$LOG_DIR"
 
 # Set up log file
 LOG_FILE="$LOG_DIR/aide-check-$TIMESTAMP.log"
-
 
 # Function to center text
 center() {
@@ -283,7 +285,7 @@ $$ |  $$ |$$$$$$\ $$$$$$$  |$$$$$$$$\       $$ |  $$ |\$$$$$$$\ $$$$$$$  |\$$$$$
                                                                 \__|
 EOF
     echo "" | tee -a "$LOG_FILE"
-    echo "$(date)" | center | tee -a "$LOG_FILE"
+    date | center | tee -a "$LOG_FILE"
     echo "" | tee -a "$LOG_FILE"
 fi
 
@@ -318,33 +320,49 @@ determine_compression() {
     fi
 }
 
+# Function to determine decompression command based on file extension
+determine_decompression() {
+    local file="$1"
+
+    if [[ "$file" == *.zst ]]; then
+        echo "zstd -d -c"
+    elif [[ "$file" == *.br ]]; then
+        echo "brotli -d -c"
+    elif [[ "$file" == *.gz ]]; then
+        echo "gzip -d -c"
+    else
+        echo "cat" # Fallback for uncompressed files
+    fi
+}
+
 # Function to send email with enhanced capabilities
 send_email() {
     local subject="$1"
     local body="$2"
-    
+
     # Always use current AIDE database as attachment when attachments are requested
     local attachment_path=""
     if [[ "$SEND_DB_ATTACHMENT" == "true" ]]; then
         attachment_path="$OLD_DB"
     fi
-    
+
     [[ "$QUIET" != "true" ]] && echo "Sending email: $subject"
-    
+
     # Create temporary file for email content
     local temp_email
     temp_email=$(mktemp)
-    
+
     # Build email headers
     {
         echo "Subject: $subject"
         echo "To: $EMAIL"
         echo "From: AIDE Maintenance <aide@$(hostname)>"
         echo "Date: $(date -R)"
-        
+
         if [[ -n "$attachment_path" && -f "$attachment_path" ]]; then
             # MIME multipart email with attachment
-            local boundary="AIDE_BOUNDARY_$(date +%s)"
+            local boundary
+            boundary="AIDE_BOUNDARY_$(date +%s)"
             echo "MIME-Version: 1.0"
             echo "Content-Type: multipart/mixed; boundary=\"$boundary\""
             echo ""
@@ -367,63 +385,64 @@ send_email() {
             echo ""
             echo "$body"
         fi
-    } > "$temp_email"
-    
+    } >"$temp_email"
+
     # Send email using available method
     local email_sent=false
-    
+
     # Try modern SMTP methods first
     if [[ -n "$SMTP_SERVER" ]]; then
         if command -v curl >/dev/null 2>&1; then
             local smtp_url="smtp://$SMTP_SERVER:$SMTP_PORT"
-            local curl_cmd="curl -s --url '$smtp_url' --mail-from 'aide@$(hostname)' --mail-rcpt '$EMAIL'"
-            
+            local curl_cmd
+            curl_cmd="curl -s --url '$smtp_url' --mail-from 'aide@$(hostname)' --mail-rcpt '$EMAIL'"
+
             if [[ -n "$SMTP_USER" && -n "$SMTP_PASS" ]]; then
                 curl_cmd="$curl_cmd --user '$SMTP_USER:$SMTP_PASS'"
             fi
-            
+
             if eval "$curl_cmd --upload-file '$temp_email'"; then
                 email_sent=true
             fi
         elif command -v msmtp >/dev/null 2>&1; then
-            if msmtp --host="$SMTP_SERVER" --port="$SMTP_PORT" "$EMAIL" < "$temp_email"; then
+            if msmtp --host="$SMTP_SERVER" --port="$SMTP_PORT" "$EMAIL" <"$temp_email"; then
                 email_sent=true
             fi
         fi
     fi
-    
+
     # Fallback to traditional mail methods
     if [[ "$email_sent" == false ]]; then
         if command -v mail >/dev/null 2>&1; then
             if [[ -n "$attachment_path" && -f "$attachment_path" ]]; then
                 # Try to use mail with attachment support
-                if mail -s "$subject" -a "$attachment_path" "$EMAIL" <<< "$body"; then
+                if mail -s "$subject" -a "$attachment_path" "$EMAIL" <<<"$body"; then
                     email_sent=true
                 fi
             else
-                if mail -s "$subject" "$EMAIL" <<< "$body"; then
+                if mail -s "$subject" "$EMAIL" <<<"$body"; then
                     email_sent=true
                 fi
             fi
         elif command -v sendmail >/dev/null 2>&1; then
-            if sendmail -t < "$temp_email"; then
+            if sendmail -t <"$temp_email"; then
                 email_sent=true
             fi
         elif [[ -x /usr/sbin/sendmail ]]; then
-            if /usr/sbin/sendmail -t < "$temp_email"; then
+            if /usr/sbin/sendmail -t <"$temp_email"; then
                 email_sent=true
             fi
         fi
     fi
-    
+
     # Clean up
     rm -f "$temp_email"
-    
+
     if [[ "$email_sent" == false ]]; then
         echo "Failed to send email. No working mail method found." >&2
         return 1
     fi
-    
+
     return 0
 }
 
@@ -432,7 +451,13 @@ fail() {
     local msg="$1"
     echo "$msg" >&2
     if [[ -n "$EMAIL" ]]; then
-        send_email "AIDE check failed" "AIDE maintenance script failed with the following error:\n\n$msg\n\nHost: $(hostname)\nTime: $(date)\nScript: $0"
+        send_email "AIDE check failed" "AIDE maintenance script failed with the following error:
+
+$msg
+
+Host: $(hostname)
+Time: $(date)
+Script: $0"
     fi
     exit 1
 }
@@ -446,32 +471,30 @@ COMPRESSED_LOG_FILE="$LOG_FILE.$EXT"
 
 # Main execution
 [[ "$QUIET" != "true" ]] && echo "Running AIDE check..."
-echo "" >> "$LOG_FILE"
-echo "===================== AIDE Check Log - $(date) ====================" >> "$LOG_FILE"
-echo "" >> "$LOG_FILE"
+{
+    echo ""
+    echo "===================== AIDE Check Log - $(date) ===================="
+    echo ""
+} >>"$LOG_FILE"
 
-# Run aide check and append output to log file (uncompressed)
-if ! aide --check >>"$LOG_FILE" 2>&1; then
-    AIDE_CHECK_FAILED=true
-else
-    AIDE_CHECK_FAILED=false
-fi
+aide --check >>"$LOG_FILE" 2>&1 || true
 
-echo "" >> "$LOG_FILE"
-echo "===================== AIDE Update Log - $(date) ====================" >> "$LOG_FILE"
-echo "" >> "$LOG_FILE"
+{
+    echo ""
+    echo "===================== AIDE Update Log - $(date) ===================="
+    echo ""
+} >>"$LOG_FILE"
 
 [[ "$QUIET" != "true" ]] && echo "Updating AIDE database..."
-# Update database
-if ! aide --update >>"$LOG_FILE" 2>&1; then
-    fail "AIDE database update failed."
-fi
+
+# # Update database
+aide --update >>"$LOG_FILE" 2>&1 || true
 
 [[ "$QUIET" != "true" ]] && echo "AIDE database check and update complete."
 
 # Compress log file
 [[ "$QUIET" != "true" ]] && echo "Compressing log file..."
-if ! $COMPRESS "$LOG_FILE" > "$COMPRESSED_LOG_FILE"; then
+if ! eval "$COMPRESS" "'$LOG_FILE'" >"$COMPRESSED_LOG_FILE"; then
     fail "Failed to compress log file."
 fi
 rm -f "$LOG_FILE"
@@ -482,7 +505,7 @@ rm -f "$LOG_FILE"
 [[ "$QUIET" != "true" ]] && echo "Backing up old database..."
 if [[ -f "$OLD_DB" ]]; then
     # Decompress and recompress to ensure backup uses current compression
-    if ! $DECOMPRESS "$OLD_DB" | $COMPRESS >"$BACKUP_DB"; then
+    if ! eval "$DECOMPRESS" "'$OLD_DB'" | eval "$COMPRESS" >"$BACKUP_DB"; then
         fail "Failed to backup old DB (recompress)."
     fi
     [[ "$QUIET" != "true" ]] && echo "Old database backed up to $BACKUP_DB"
@@ -504,9 +527,9 @@ fi
 # Email results
 if [[ -n "$EMAIL" ]]; then
     [[ "$QUIET" != "true" ]] && echo "Preparing to email results to $EMAIL"
-    
+
     # Build email body
-    local email_body="AIDE maintenance script completed successfully.
+    email_body="AIDE maintenance script completed successfully.
 
 Host: $(hostname)
 Time: $(date)
@@ -515,19 +538,12 @@ Log File: $COMPRESSED_LOG_FILE
 Backup DB: $BACKUP_DB
 
 "
-    
-    if [[ "$AIDE_CHECK_FAILED" == "true" ]]; then
-        email_body="${email_body}WARNING: AIDE check detected changes or issues. Please review the attached log file.
-
-"
-    fi
-    
     # Get log content for email body
-    local log_content
-    log_content="$(gzip -d -c "$COMPRESSED_LOG_FILE" 2>/dev/null || echo "Failed to decompress log.")"
+    decompress_cmd="$(determine_decompression "$COMPRESSED_LOG_FILE")"
+    log_content="$(eval "$decompress_cmd" "'$COMPRESSED_LOG_FILE'" 2>/dev/null || echo "Failed to decompress log.")"
     email_body="${email_body}Log Content:
 $log_content"
-    
+
     # Send email (attachment will be included automatically if SEND_DB_ATTACHMENT is true)
     send_email "AIDE check completed" "$email_body"
 fi
