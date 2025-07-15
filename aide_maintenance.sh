@@ -335,6 +335,74 @@ determine_decompression() {
     fi
 }
 
+# Function to interpret AIDE exit codes
+interpret_aide_exit_code() {
+    local exit_code="$1"
+    local operation="$2"
+    
+    case $exit_code in
+        0)
+            echo "No changes detected"
+            ;;
+        1)
+            echo "New files detected"
+            ;;
+        2)
+            echo "Removed files detected"
+            ;;
+        3)
+            echo "New and removed files detected"
+            ;;
+        4)
+            echo "Changed files detected"
+            ;;
+        5)
+            echo "New and changed files detected"
+            ;;
+        6)
+            echo "Removed and changed files detected"
+            ;;
+        7)
+            echo "New, removed, and changed files detected"
+            ;;
+        14)
+            echo "Error writing error during $operation"
+            ;;
+        15)
+            echo "Invalid argument error during $operation"
+            ;;
+        16)
+            echo "Unimplemented function error during $operation"
+            ;;
+        17)
+            echo "Invalid configuration line error during $operation"
+            ;;
+        18)
+            echo "IO error during $operation"
+            ;;
+        19)
+            echo "Version mismatch error during $operation"
+            ;;
+        *)
+            echo "Unknown error (exit code: $exit_code) during $operation"
+            ;;
+    esac
+}
+
+# Function to check if AIDE exit code indicates a fatal error
+is_aide_fatal_error() {
+    local exit_code="$1"
+    # Exit codes 14-19 are fatal errors
+    [ "$exit_code" -ge 14 ] && [ "$exit_code" -le 19 ]
+}
+
+# Function to check if AIDE detected changes
+aide_detected_changes() {
+    local exit_code="$1"
+    # Exit codes 1-7 indicate changes were detected
+    [ "$exit_code" -ge 1 ] && [ "$exit_code" -le 7 ]
+}
+
 # Function to send email with enhanced capabilities
 send_email() {
     local subject="$1"
@@ -477,7 +545,34 @@ COMPRESSED_LOG_FILE="$LOG_FILE.$EXT"
     echo ""
 } >>"$LOG_FILE"
 
-aide --check >>"$LOG_FILE" 2>&1 || true
+# Run AIDE check and capture exit code
+set +e  # Temporarily disable exit on error
+aide --check >>"$LOG_FILE" 2>&1
+aide_check_exit_code=$?
+set -e  # Re-enable exit on error
+
+# Log the check result
+{
+    echo ""
+    echo "AIDE Check Exit Code: $aide_check_exit_code"
+    echo ""
+} >>"$LOG_FILE"
+
+# Interpret the check result
+check_result=$(interpret_aide_exit_code "$aide_check_exit_code" "check")
+[[ "$QUIET" != "true" ]] && echo "AIDE check result: $check_result"
+
+# Check if it's a fatal error
+if is_aide_fatal_error "$aide_check_exit_code"; then
+    fail "AIDE check failed with fatal error: $check_result"
+fi
+
+# Set flag if changes were detected
+AIDE_CHANGES_DETECTED=false
+if aide_detected_changes "$aide_check_exit_code"; then
+    AIDE_CHANGES_DETECTED=true
+    [[ "$QUIET" != "true" ]] && echo "WARNING: AIDE detected file system changes!"
+fi
 
 {
     echo ""
@@ -487,8 +582,27 @@ aide --check >>"$LOG_FILE" 2>&1 || true
 
 [[ "$QUIET" != "true" ]] && echo "Updating AIDE database..."
 
-# # Update database
-aide --update >>"$LOG_FILE" 2>&1 || true
+# Run AIDE update and capture exit code
+set +e  # Temporarily disable exit on error
+aide --update >>"$LOG_FILE" 2>&1
+aide_update_exit_code=$?
+set -e  # Re-enable exit on error
+
+# Log the update result
+{
+    echo ""
+    echo "AIDE Update Exit Code: $aide_update_exit_code"
+    echo ""
+} >>"$LOG_FILE"
+
+# Interpret the update result
+update_result=$(interpret_aide_exit_code "$aide_update_exit_code" "update")
+[[ "$QUIET" != "true" ]] && echo "AIDE update result: $update_result"
+
+# Check if update had a fatal error
+if is_aide_fatal_error "$aide_update_exit_code"; then
+    fail "AIDE update failed with fatal error: $update_result"
+fi
 
 [[ "$QUIET" != "true" ]] && echo "AIDE database check and update complete."
 
@@ -537,7 +651,16 @@ Script: $0
 Log File: $COMPRESSED_LOG_FILE
 Backup DB: $BACKUP_DB
 
+AIDE Check Result: $check_result
+AIDE Update Result: $update_result
+
 "
+    
+    if [[ "$AIDE_CHANGES_DETECTED" == "true" ]]; then
+        email_body="${email_body}WARNING: AIDE detected file system changes! Please review the log file for details.
+
+"
+    fi
     # Get log content for email body
     decompress_cmd="$(determine_decompression "$COMPRESSED_LOG_FILE")"
     log_content="$(eval "$decompress_cmd" "'$COMPRESSED_LOG_FILE'" 2>/dev/null || echo "Failed to decompress log.")"
