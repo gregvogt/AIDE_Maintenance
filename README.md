@@ -4,39 +4,50 @@ An enhanced bash script for automated AIDE (Advanced Intrusion Detection Environ
 
 ## Features
 
-### 🔒 Security Hardening
+### Security Hardening
 - **Bash hardening**: Uses `set -euo pipefail` for strict error handling
 - **Input sanitization**: All user inputs are sanitized against injection attacks
 - **Path validation**: Prevents path traversal attacks
 - **Secure IFS**: Uses secure Internal Field Separator
 - **Input validation**: Comprehensive validation of all parameters
 
-### 📧 Enhanced Email Notifications
-- **Multiple email methods**: Supports mail, sendmail, msmtp, and curl with SMTP
+### Enhanced Email Notifications
+- **Multiple email methods**: Supports curl with SMTP, msmtp, mail, and sendmail
 - **SMTP authentication**: Full SMTP server support with username/password
-- **Email attachments**: Option to send current AIDE database as attachment
-- **MIME multipart emails**: Proper email formatting with attachments
-- **Fallback methods**: Tries multiple email methods for reliability
+- **Email attachments**: Option to send current AIDE database (aide.db.gz) as attachment
+- **MIME multipart emails**: Proper email formatting with base64 encoded attachments
+- **Fallback methods**: Tries multiple email methods for reliability (SMTP first, then traditional)
+- **Detailed reporting**: Includes AIDE exit codes, interpretation, and full log content in emails
+- **Secure temporary files**: Email content files created with restrictive permissions (600)
 
-### 🛠️ Command Line Interface
+### AIDE Exit Code Handling
+- **Smart exit code interpretation**: Properly handles AIDE's non-standard exit codes
+- **Change detection**: Distinguishes between file changes (codes 1-7) and fatal errors (codes 14-19)
+- **Detailed reporting**: Logs and reports specific types of changes detected
+- **Proper error handling**: Only fails on fatal errors, continues on change detection
+- **Status tracking**: Tracks and reports both check and update results
+
+### Command Line Interface
 - **Full argument parsing**: Comprehensive command-line options
 - **Validation**: All inputs are validated before processing
 - **Help system**: Built-in help with examples
 - **Quiet mode**: Suppress non-error output for cron jobs
 
-### 🔄 Cron Job Installation
+### Cron Job Installation
 - **Automatic installation**: Install as daily cron job at 12:00 AM
 - **Argument preservation**: Saves all command-line arguments in cron job
 - **Duplicate prevention**: Prevents duplicate cron entries
 
-### 📁 Directory Management
+### Directory Management
 - **Auto-creation**: Creates log directories if they don't exist
 - **Path validation**: Ensures absolute paths and prevents traversal
 
-### 🗜️ Compression Optimization
+### Compression Optimization
 - **AIDE compatibility**: Keeps aide.db.gz and aide.db.new.gz as gzip (required by AIDE)
 - **Backup compression**: Uses best available compression (zstd > brotli > gzip) for backups
 - **Automatic detection**: Detects and uses best available compression tool
+- **Safe command execution**: Uses arrays instead of eval for security
+- **Proper decompression**: Handles different compression formats for log viewing
 
 ## Usage
 
@@ -114,12 +125,22 @@ For advanced email features, configure SMTP settings:
 - Prevents `../` and `..` path traversal attempts
 - Requires absolute paths for directories
 - Validates file existence before operations
+- Checks for empty database files
 
 ### Bash Hardening
 - `set -euo pipefail` for strict error handling
 - Secure IFS to prevent word splitting attacks
 - Proper quoting and variable expansion
-- Error handling with cleanup
+- Error handling with cleanup on exit
+- Safe command execution using arrays instead of eval to prevent injection
+- Temporary file permissions set to 600 for security
+- Comprehensive input sanitization against command injection
+
+### AIDE Exit Code Security
+- Proper handling of AIDE's non-zero exit codes
+- Distinguishes between expected changes and actual errors
+- Prevents script termination on normal AIDE change detection
+- Comprehensive logging of all exit codes and their meanings
 
 ## File Locations
 
@@ -162,6 +183,32 @@ The script includes comprehensive error handling:
 - Provides detailed error messages
 - Sends failure notifications via email
 - Cleans up temporary files on exit
+- Properly interprets AIDE exit codes
+- Continues execution on file changes, fails only on fatal errors
+
+## AIDE Exit Code Handling
+
+The script properly handles AIDE's unique exit code system:
+
+### Change Detection Codes (Non-Fatal)
+- **0**: No changes detected
+- **1**: New files detected
+- **2**: Removed files detected
+- **3**: New and removed files detected
+- **4**: Changed files detected
+- **5**: New and changed files detected
+- **6**: Removed and changed files detected
+- **7**: New, removed, and changed files detected
+
+### Fatal Error Codes
+- **14**: Error writing error
+- **15**: Invalid argument error
+- **16**: Unimplemented function error
+- **17**: Invalid configuration line error
+- **18**: IO error
+- **19**: Version mismatch error
+
+The script will continue execution and send notifications for change detection codes (1-7) but will fail and send error notifications for fatal error codes (14-19).
 
 ## Requirements
 
@@ -171,9 +218,10 @@ The script includes comprehensive error handling:
 - `gzip` (for AIDE database compatibility)
 
 ### Optional (for enhanced features)
-- `zstd` or `brotli` (for better backup compression)
+- `zstd` or `brotli` (for optimal backup compression)
 - `mail`, `sendmail`, or `msmtp` (for email notifications)
-- `curl` (for SMTP email support)
+- `curl` (for modern SMTP email support - preferred method)
+- `base64` (for email attachments - usually included in coreutils)
 - `crontab` (for cron job installation)
 
 ## Examples
@@ -217,8 +265,3 @@ The script includes comprehensive error handling:
 
 This script is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-## Author
-
-Greg Vogt <contact@gregvogt.net>
-- Website: https://gregvogt.net/projects
-- License: GNU General Public License v3.0
