@@ -41,7 +41,6 @@ update_result=""
 # Path variables (ensure these are always gzip for AIDE compatibility)
 OLD_DB="/var/lib/aide/aide.db.gz"
 NEW_DB="/var/lib/aide/aide.db.new.gz"
-DECOMPRESS="gzip -d -c"
 
 # Function to sanitize input
 sanitize_input() {
@@ -592,16 +591,17 @@ aide --update >>"$LOG_FILE" 2>&1
 aide_update_exit_code=$?
 set -e  # Re-enable exit on error
 
-# Log the update result
-{
-    echo ""
-    echo "AIDE Update Exit Code: $aide_update_exit_code"
-    echo ""
-} >>"$LOG_FILE"
-
 # Interpret the update result
 update_result=$(interpret_aide_exit_code "$aide_update_exit_code" "update")
 [[ "$QUIET" != "true" ]] && echo "AIDE update result: $update_result"
+
+# Log the update result
+{
+    echo ""
+    echo "AIDE Update Exit Code: $aide_update_exit_code: $update_result"
+    echo ""
+} >>"$LOG_FILE"
+
 
 # Check if update had a fatal error
 if is_aide_fatal_error "$aide_update_exit_code"; then
