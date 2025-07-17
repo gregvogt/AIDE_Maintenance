@@ -493,9 +493,9 @@ send_email() {
         if command -v mail >/dev/null 2>&1; then
             if [[ -n "$attachment_path" && -f "$attachment_path" ]]; then
                 # Try to use mail with attachment support
-                mail -s "$subject" -a "$attachment_path" "$EMAIL" <<<"$body" && email_sent=true
+                mail -s "$subject" -r "AIDE Maintenance <aide@$(hostname)>" -a "$attachment_path" "$EMAIL" <<<"$body" && email_sent=true
             else
-                mail -s "$subject" "$EMAIL" <<<"$body" && email_sent=true
+                mail -s "$subject" -r "AIDE Maintenance <aide@$(hostname)>" "$EMAIL" <<<"$body" && email_sent=true
             fi
         elif command -v sendmail >/dev/null 2>&1; then
             sendmail -t <"$temp_email" && email_sent=true
